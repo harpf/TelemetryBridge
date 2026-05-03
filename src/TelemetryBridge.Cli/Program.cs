@@ -1,49 +1,56 @@
+using System.Globalization;
 using System.Text.Json;
 using TelemetryBridge.Core.Models;
 using TelemetryBridge.Core.Services;
 
-var argsList = args.ToList();
+var argsList = args;
 var configService = new ConfigService();
 var bufferService = new BufferService();
 
-if (argsList.Count == 0)
+if (argsList.Length == 0 || argsList[0] is "-h" or "--help" or "help")
 {
-    PrintHelp();
+    PrintHelp(configService.GetWorkspaceRoot());
     return 0;
 }
 
 var cmd = argsList[0].ToLowerInvariant();
 
-switch (cmd)
+return cmd switch
 {
-    case "config":
-        return HandleConfig(argsList.Skip(1).ToList(), configService);
-    case "send":
-        return HandleSend(argsList.Skip(1).ToList(), configService, bufferService);
-    default:
-        Console.Error.WriteLine($"Unknown command '{cmd}'.");
-        PrintHelp();
-        return 1;
+    "config" => HandleConfig(argsList.Skip(1).ToArray(), configService),
+    "send" => HandleSend(argsList.Skip(1).ToArray(), configService, bufferService),
+    _ => HandleUnknownCommand(cmd, configService)
+};
+
+static int HandleUnknownCommand(string cmd, ConfigService configService)
+{
+    Console.Error.WriteLine($"Unknown command '{cmd}'.\n");
+    PrintHelp(configService.GetWorkspaceRoot());
+    return 1;
 }
 
-static int HandleConfig(List<string> args, ConfigService configService)
+static int HandleConfig(string[] args, ConfigService configService)
 {
-    if (args.Count == 0) { Console.WriteLine("Missing subcommand."); return 1; }
+    if (args.Length == 0)
+    {
+        Console.Error.WriteLine("Missing config subcommand. Use: config init|show|validate");
+        return 1;
+    }
 
     var sub = args[0].ToLowerInvariant();
     switch (sub)
     {
         case "init":
             var cfg = configService.Init();
-            Console.WriteLine("Config initialized.");
-            Console.WriteLine(JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"Configuration initialized at: {configService.GetConfigPath()}");
+            Console.WriteLine(JsonSerializer.Serialize(cfg, JsonFormatting.Options));
             return 0;
         case "show":
-            var loaded = configService.Load();
-            Console.WriteLine(JsonSerializer.Serialize(loaded, new JsonSerializerOptions { WriteIndented = true }));
+            var loaded = configService.LoadOrCreate();
+            Console.WriteLine(JsonSerializer.Serialize(loaded, JsonFormatting.Options));
             return 0;
         case "validate":
-            var validateConfig = configService.Load();
+            var validateConfig = configService.LoadOrCreate();
             var errors = configService.Validate(validateConfig);
             if (errors.Count == 0)
             {
@@ -55,34 +62,43 @@ static int HandleConfig(List<string> args, ConfigService configService)
             foreach (var error in errors) Console.Error.WriteLine($" - {error}");
             return 2;
         default:
-            Console.Error.WriteLine($"Unknown config subcommand '{sub}'.");
+            Console.Error.WriteLine($"Unknown config subcommand '{sub}'. Use: config init|show|validate");
             return 1;
     }
 }
 
-static int HandleSend(List<string> args, ConfigService configService, BufferService bufferService)
+static int HandleSend(string[] args, ConfigService configService, BufferService bufferService)
 {
-    if (args.Count == 0 || args[0].ToLowerInvariant() != "job")
+    if (args.Length == 0 || !string.Equals(args[0], "job", StringComparison.OrdinalIgnoreCase))
     {
         Console.Error.WriteLine("Only 'send job' is currently implemented.");
         return 1;
     }
 
     string? jobName = null;
-    string status = "succeeded";
+    var status = "succeeded";
     double? durationMs = null;
-    string system = "powershell";
+    var system = "powershell";
 
-    for (var i = 1; i < args.Count; i++)
+    for (var i = 1; i < args.Length; i++)
     {
         switch (args[i])
         {
-            case "--job-name": jobName = i + 1 < args.Count ? args[++i] : null; break;
-            case "--status": status = i + 1 < args.Count ? args[++i] : status; break;
-            case "--duration-ms":
-                if (i + 1 < args.Count && double.TryParse(args[++i], out var parsed)) durationMs = parsed;
+            case "--job-name":
+                if (i + 1 < args.Length) jobName = args[++i];
                 break;
-            case "--system": system = i + 1 < args.Count ? args[++i] : system; break;
+            case "--status":
+                if (i + 1 < args.Length) status = args[++i];
+                break;
+            case "--duration-ms":
+                if (i + 1 < args.Length && double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+                {
+                    durationMs = parsed;
+                }
+                break;
+            case "--system":
+                if (i + 1 < args.Length) system = args[++i];
+                break;
         }
     }
 
@@ -92,7 +108,7 @@ static int HandleSend(List<string> args, ConfigService configService, BufferServ
         return 1;
     }
 
-    var config = configService.Load();
+    var config = configService.LoadOrCreate();
     var evt = new JobEvent
     {
         JobName = jobName,
@@ -104,14 +120,31 @@ static int HandleSend(List<string> args, ConfigService configService, BufferServ
 
     var path = bufferService.Enqueue(evt, config.Buffer.Path);
     Console.WriteLine($"Buffered event: {path}");
-    Console.WriteLine("Export pipeline not yet implemented (MVP phase 2+).");
     return 0;
 }
 
-static void PrintHelp()
+static void PrintHelp(string workspaceRoot)
 {
-    Console.WriteLine("TelemetryBridge CLI (initial implementation)");
+    Console.WriteLine("TelemetryBridge CLI");
+    Console.WriteLine("===================");
+    Console.WriteLine();
+    Console.WriteLine("Usage:");
+    Console.WriteLine("  telemetrybridge <command> [options]");
+    Console.WriteLine();
     Console.WriteLine("Commands:");
-    Console.WriteLine("  config init|show|validate");
+    Console.WriteLine("  config init                  Create default config + local data folders");
+    Console.WriteLine("  config show                  Display current config (auto-creates if missing)");
+    Console.WriteLine("  config validate              Validate current config");
     Console.WriteLine("  send job --job-name <name> [--status <status>] [--duration-ms <n>] [--system <name>]");
+    Console.WriteLine();
+    Console.WriteLine("Local workspace:");
+    Console.WriteLine($"  {workspaceRoot}");
+    Console.WriteLine("  ├─ telemetrybridge.config.json");
+    Console.WriteLine("  └─ Data/");
+    Console.WriteLine("     └─ Buffer/");
+}
+
+static class JsonFormatting
+{
+    public static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 }
