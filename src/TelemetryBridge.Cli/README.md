@@ -38,19 +38,26 @@ TelemetryBridge.Cli.exe send job --job-name "NightlyBackup" --status succeeded -
 TelemetryBridge.Cli.exe send job --job-name "ImportCustomers"
 ```
 
+### 7) Verbose logging
+```powershell
+TelemetryBridge.Cli.exe --verbose send job --job-name "ImportCustomers"
+```
+
 ## Command reference
 
 ```text
 config init
 config show
 config validate
-send job --job-name <name> [--status <status>] [--duration-ms <n>] [--system <name>]
+[--verbose|-v] send job --job-name <name> [--status <status>] [--duration-ms <n>] [--system <name>]
 ```
 
 ## Notes
 - `--job-name` is required for `send job`.
 - `--duration-ms` expects a numeric value (e.g. `1234.5`).
-- Telemetry events are buffered to disk in `TelemetryBridge/Data/Buffer`.
+- Telemetry events are always buffered to disk in `TelemetryBridge/Data/Buffer`.
+- After buffering, the CLI attempts an immediate OTLP export to `signoz.endpoint` using `signoz.protocol` (`grpc` or `http`).
+- Use `--verbose` (or `-v`) to see export skip/failure details in console output.
 
 ## Planned technical stack
 - `System.CommandLine` for command tree.
