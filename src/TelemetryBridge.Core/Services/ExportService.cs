@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using OpenTelemetry;
-using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using TelemetryBridge.Core.Models;
@@ -11,17 +9,17 @@ public sealed class ExportService
 {
     private const string ActivitySourceName = "TelemetryBridge.Cli";
 
-    public Task<ExportResult> TrySendAsync(JobEvent telemetryEvent, BridgeConfig config, bool verbose, CancellationToken cancellationToken = default)
+    public async Task<ExportResult> TrySendAsync(JobEvent telemetryEvent, BridgeConfig config, bool verbose, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(config.Signoz.Endpoint))
         {
-            return Task.FromResult(ExportResult.CreateFailed("Missing signoz.endpoint in configuration."));
+            return ExportResult.Failed("Missing signoz.endpoint in configuration.");
         }
 
         var protocol = ResolveProtocol(config.Signoz.Protocol);
         if (protocol is null)
         {
-            return Task.FromResult(ExportResult.CreateSkipped($"Protocol '{config.Signoz.Protocol}' is not supported. Use 'grpc' or 'http'."));
+            return ExportResult.Skipped($"Protocol '{config.Signoz.Protocol}' is not supported. Use 'grpc' or 'http'.");
         }
 
         if (verbose)
@@ -49,7 +47,7 @@ public sealed class ExportService
             using var activity = source.StartActivity("job.run", ActivityKind.Internal);
             if (activity is null)
             {
-                return Task.FromResult(ExportResult.CreateFailed("Could not create telemetry activity for export."));
+                return ExportResult.Failed("Could not create telemetry activity for export.");
             }
 
             activity.SetTag("job.name", telemetryEvent.JobName);
@@ -57,7 +55,7 @@ public sealed class ExportService
             activity.SetTag("job.system", telemetryEvent.System);
             if (telemetryEvent.DurationMs.HasValue) activity.SetTag("job.duration_ms", telemetryEvent.DurationMs.Value);
             activity.SetTag("job.run_id", telemetryEvent.JobRunId.ToString());
-            if (telemetryEvent.FinishedAt.HasValue) activity.SetTag("event.finished_at", telemetryEvent.FinishedAt.Value.ToString("O"));
+            activity.SetTag("event.finished_at", telemetryEvent.FinishedAt.ToString("O"));
 
             if (string.Equals(telemetryEvent.Status, "failed", StringComparison.OrdinalIgnoreCase))
             {
@@ -69,16 +67,17 @@ public sealed class ExportService
             }
 
             activity.Stop();
-            provider.ForceFlush((int)Math.Max(1000, config.Signoz.TimeoutSeconds * 1000));
-            return Task.FromResult(ExportResult.CreateSuccess("Delivered via OpenTelemetry OTLP exporter."));
+
+            await provider.ForceFlushAsync(timeoutCts.Token);
+            return ExportResult.Success("Delivered via OpenTelemetry OTLP exporter.");
         }
         catch (OperationCanceledException)
         {
-            return Task.FromResult(ExportResult.CreateFailed("Export timed out."));
+            return ExportResult.Failed("Export timed out.");
         }
         catch (Exception ex)
         {
-            return Task.FromResult(ExportResult.CreateFailed(ex.Message));
+            return ExportResult.Failed(ex.Message);
         }
     }
 
@@ -93,7 +92,7 @@ public sealed class ExportService
 
 public sealed record ExportResult(bool Success, bool Skipped, string Message)
 {
-    public static ExportResult CreateSuccess(string message) => new(true, false, message);
-    public static ExportResult CreateSkipped(string reason) => new(false, true, reason);
-    public static ExportResult CreateFailed(string reason) => new(false, false, reason);
+    public static ExportResult Success(string message) => new(true, false, message);
+    public static ExportResult Skipped(string reason) => new(false, true, reason);
+    public static ExportResult Failed(string reason) => new(false, false, reason);
 }
