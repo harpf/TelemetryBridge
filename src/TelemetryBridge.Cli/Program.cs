@@ -128,11 +128,11 @@ static async Task<int> HandleSend(string[] args, ConfigService configService, Bu
     try
     {
         var sendResult = await exportService.TrySendAsync(evt, config, verbose);
-        if (sendResult.Success)
+        if (sendResult.IsSuccess)
         {
             Console.WriteLine($"Forwarded event: {sendResult.Message}");
         }
-        else if (sendResult.Skipped)
+        else if (sendResult.IsSkipped)
         {
             if (verbose) Console.WriteLine($"[verbose] export skipped: {sendResult.Message}");
         }

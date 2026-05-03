@@ -32,6 +32,7 @@ public sealed class BridgeConfig
         public string Endpoint { get; init; } = "http://localhost:4317";
         public string Protocol { get; init; } = "grpc";
         public int TimeoutSeconds { get; init; } = 10;
+        public string? Headers { get; init; }
     }
 
     public sealed class BufferOptions
