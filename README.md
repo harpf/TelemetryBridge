@@ -35,9 +35,3 @@ Scripts/Jobs -> Local CLI/HTTP -> TelemetryBridge -> OTLP -> SigNoz (On-Prem)
 5. Implement `send job`, `send job-start`, `send job-end` contracts.
 6. Add retry worker + dead-letter queue.
 7. Add service hosting and localhost ingest endpoint.
-
-
-## Current implementation status
-- Initial .NET 10 solution and projects are scaffolded.
-- CLI currently supports `config init`, `config show`, `config validate`, and `send job` (buffer write).
-- OTLP export and service-hosted ingest are planned next.
