@@ -6,6 +6,7 @@ using TelemetryBridge.Core.Services;
 var argsList = args;
 var configService = new ConfigService();
 var bufferService = new BufferService();
+var exportService = new ExportService();
 
 if (argsList.Length == 0 || argsList[0] is "-h" or "--help" or "help")
 {
@@ -13,12 +14,15 @@ if (argsList.Length == 0 || argsList[0] is "-h" or "--help" or "help")
     return 0;
 }
 
+var verbose = argsList.Any(a => string.Equals(a, "--verbose", StringComparison.OrdinalIgnoreCase) || string.Equals(a, "-v", StringComparison.OrdinalIgnoreCase));
+argsList = argsList.Where(a => !string.Equals(a, "--verbose", StringComparison.OrdinalIgnoreCase) && !string.Equals(a, "-v", StringComparison.OrdinalIgnoreCase)).ToArray();
+
 var cmd = argsList[0].ToLowerInvariant();
 
 return cmd switch
 {
     "config" => HandleConfig(argsList.Skip(1).ToArray(), configService),
-    "send" => HandleSend(argsList.Skip(1).ToArray(), configService, bufferService),
+    "send" => await HandleSend(argsList.Skip(1).ToArray(), configService, bufferService, exportService, verbose),
     _ => HandleUnknownCommand(cmd, configService)
 };
 
@@ -67,7 +71,7 @@ static int HandleConfig(string[] args, ConfigService configService)
     }
 }
 
-static int HandleSend(string[] args, ConfigService configService, BufferService bufferService)
+static async Task<int> HandleSend(string[] args, ConfigService configService, BufferService bufferService, ExportService exportService, bool verbose)
 {
     if (args.Length == 0 || !string.Equals(args[0], "job", StringComparison.OrdinalIgnoreCase))
     {
@@ -120,6 +124,29 @@ static int HandleSend(string[] args, ConfigService configService, BufferService 
 
     var path = bufferService.Enqueue(evt, config.Buffer.Path);
     Console.WriteLine($"Buffered event: {path}");
+
+    try
+    {
+        var sendResult = await exportService.TrySendAsync(evt, config, verbose);
+        if (sendResult.Success)
+        {
+            Console.WriteLine($"Forwarded event: {sendResult.Message}");
+        }
+        else if (sendResult.Skipped)
+        {
+            if (verbose) Console.WriteLine($"[verbose] export skipped: {sendResult.Message}");
+        }
+        else
+        {
+            Console.Error.WriteLine($"Export failed (event remains buffered): {sendResult.Message}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Export failed (event remains buffered): {ex.Message}");
+        if (verbose) Console.Error.WriteLine($"[verbose] {ex}");
+    }
+
     return 0;
 }
 
@@ -129,7 +156,7 @@ static void PrintHelp(string workspaceRoot)
     Console.WriteLine("===================");
     Console.WriteLine();
     Console.WriteLine("Usage:");
-    Console.WriteLine("  telemetrybridge <command> [options]");
+    Console.WriteLine("  telemetrybridge [--verbose|-v] <command> [options]");
     Console.WriteLine();
     Console.WriteLine("Commands:");
     Console.WriteLine("  config init                  Create default config + local data folders");
