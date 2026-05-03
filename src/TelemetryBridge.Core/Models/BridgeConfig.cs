@@ -1,0 +1,30 @@
+namespace TelemetryBridge.Core.Models;
+
+public sealed class BridgeConfig
+{
+    public AgentOptions Agent { get; init; } = new();
+    public SignozOptions Signoz { get; init; } = new();
+    public BufferOptions Buffer { get; init; } = new();
+
+    public static BridgeConfig Default() => new();
+
+    public sealed class AgentOptions
+    {
+        public string InstanceId { get; init; } = "auto";
+        public bool StrictMode { get; init; }
+    }
+
+    public sealed class SignozOptions
+    {
+        public string Endpoint { get; init; } = "http://localhost:4317";
+        public string Protocol { get; init; } = "grpc";
+        public int TimeoutSeconds { get; init; } = 10;
+    }
+
+    public sealed class BufferOptions
+    {
+        public bool Enabled { get; init; } = true;
+        public string Path { get; init; } = "./buffer";
+        public int MaxSizeMb { get; init; } = 500;
+    }
+}
