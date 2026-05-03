@@ -6,7 +6,20 @@ public sealed class BridgeConfig
     public SignozOptions Signoz { get; init; } = new();
     public BufferOptions Buffer { get; init; } = new();
 
-    public static BridgeConfig Default() => new();
+    public static BridgeConfig Default(string workspaceRoot)
+    {
+        var bufferPath = Path.Combine(workspaceRoot, "Data", "Buffer");
+
+        return new BridgeConfig
+        {
+            Buffer = new BufferOptions
+            {
+                Enabled = true,
+                Path = bufferPath,
+                MaxSizeMb = 500
+            }
+        };
+    }
 
     public sealed class AgentOptions
     {
