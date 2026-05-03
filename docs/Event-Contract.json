@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TelemetryBridge Job Event",
+  "type": "object",
+  "required": ["eventType", "jobRunId", "system", "jobName", "status", "startedAt"],
+  "properties": {
+    "eventType": {"type": "string", "enum": ["job", "job-start", "job-end"]},
+    "jobRunId": {"type": "string", "format": "uuid"},
+    "correlationId": {"type": "string"},
+    "parentCorrelationId": {"type": "string"},
+    "system": {"type": "string", "enum": ["powershell", "scriptrunner", "simego-dss", "ouvvi", "manual"]},
+    "instance": {"type": "string"},
+    "jobName": {"type": "string", "minLength": 1},
+    "scriptPath": {"type": "string"},
+    "scriptName": {"type": "string"},
+    "scriptVersion": {"type": "string"},
+    "status": {"type": "string", "enum": ["started", "succeeded", "failed", "warning", "skipped", "cancelled", "timeout", "interrupted", "unknown"]},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"},
+    "durationMs": {"type": "number", "minimum": 0},
+    "exitCode": {"type": "integer"},
+    "error": {
+      "type": ["object", "null"],
+      "properties": {
+        "type": {"type": "string"},
+        "message": {"type": "string"},
+        "code": {"type": "string"},
+        "category": {"type": "string"},
+        "fullyQualifiedId": {"type": "string"},
+        "scriptLineNumber": {"type": "integer"},
+        "scriptColumnNumber": {"type": "integer"},
+        "commandName": {"type": "string"},
+        "stackTrace": {"type": "string"}
+      }
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    }
+  }
+}
