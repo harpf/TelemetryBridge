@@ -97,6 +97,16 @@ public sealed class ExportService
             activity.SetTag("job.system", telemetryEvent.System);
             activity.SetTag("job.run_id", telemetryEvent.JobRunId);
 
+            if (!string.IsNullOrWhiteSpace(telemetryEvent.RunbookName)) activity.SetTag("runbook.name", telemetryEvent.RunbookName);
+            if (!string.IsNullOrWhiteSpace(telemetryEvent.ScriptPath)) activity.SetTag("script.path", telemetryEvent.ScriptPath);
+            if (!string.IsNullOrWhiteSpace(telemetryEvent.EnvironmentName)) activity.SetTag("environment.name", telemetryEvent.EnvironmentName);
+            if (!string.IsNullOrWhiteSpace(telemetryEvent.HostName)) activity.SetTag("host.name", telemetryEvent.HostName);
+
+            foreach (var attribute in telemetryEvent.Attributes)
+            {
+                activity.SetTag($"script.attr.{attribute.Key}", attribute.Value);
+            }
+
             activity.SetTag("job.started_at", telemetryEvent.StartedAt.ToString("O"));
 
             if (telemetryEvent.FinishedAt.HasValue)
@@ -157,7 +167,7 @@ public sealed class ExportService
         }
     }
 
-    private static OtlpExportProtocol? ResolveProtocol(string? protocol)
+    internal static OtlpExportProtocol? ResolveProtocol(string? protocol)
     {
         if (string.Equals(protocol, "grpc", StringComparison.OrdinalIgnoreCase))
         {
@@ -173,7 +183,7 @@ public sealed class ExportService
         return null;
     }
 
-    private static Uri BuildEndpoint(string endpoint, OtlpExportProtocol protocol)
+    internal static Uri BuildEndpoint(string endpoint, OtlpExportProtocol protocol)
     {
         var uri = new Uri(endpoint);
 

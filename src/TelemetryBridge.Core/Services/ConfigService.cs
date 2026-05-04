@@ -53,6 +53,9 @@ public sealed class ConfigService
         if (config.Signoz.TimeoutSeconds <= 0) errors.Add("signoz.timeoutSeconds must be > 0");
         if (config.Buffer.MaxSizeMb <= 0) errors.Add("buffer.maxSizeMb must be > 0");
         if (string.IsNullOrWhiteSpace(config.Buffer.Path)) errors.Add("buffer.path is required");
+        if (config.Service.TimeoutSeconds <= 0) errors.Add("service.timeoutSeconds must be > 0");
+        if (config.Service.TcpPort <= 0) errors.Add("service.tcpPort must be > 0");
+        if (string.IsNullOrWhiteSpace(config.Service.HttpEndpoint)) errors.Add("service.httpEndpoint is required");
         return errors;
     }
 }
