@@ -5,6 +5,7 @@ public sealed class BridgeConfig
     public AgentOptions Agent { get; init; } = new();
     public SignozOptions Signoz { get; init; } = new();
     public BufferOptions Buffer { get; init; } = new();
+    public ServiceOptions Service { get; init; } = new();
 
     public static BridgeConfig Default(string workspaceRoot)
     {
@@ -17,6 +18,14 @@ public sealed class BridgeConfig
                 Enabled = true,
                 Path = bufferPath,
                 MaxSizeMb = 500
+            },
+            Service = new ServiceOptions
+            {
+                Enabled = true,
+                HttpEndpoint = "http://127.0.0.1:5067/health",
+                TcpHost = "127.0.0.1",
+                TcpPort = 4317,
+                TimeoutSeconds = 5
             }
         };
     }
@@ -40,5 +49,14 @@ public sealed class BridgeConfig
         public bool Enabled { get; init; } = true;
         public string Path { get; init; } = "./buffer";
         public int MaxSizeMb { get; init; } = 500;
+    }
+
+    public sealed class ServiceOptions
+    {
+        public bool Enabled { get; init; }
+        public string HttpEndpoint { get; init; } = "http://127.0.0.1:5067/health";
+        public string TcpHost { get; init; } = "127.0.0.1";
+        public int TcpPort { get; init; } = 4317;
+        public int TimeoutSeconds { get; init; } = 5;
     }
 }
