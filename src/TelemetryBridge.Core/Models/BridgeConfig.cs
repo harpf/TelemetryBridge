@@ -10,6 +10,7 @@ public sealed class BridgeConfig
     public static BridgeConfig Default(string workspaceRoot)
     {
         var bufferPath = Path.Combine(workspaceRoot, "Data", "Buffer");
+        var deadLetterPath = Path.Combine(workspaceRoot, "Data", "DeadLetter");
 
         return new BridgeConfig
         {
@@ -17,7 +18,8 @@ public sealed class BridgeConfig
             {
                 Enabled = true,
                 Path = bufferPath,
-                MaxSizeMb = 500
+                MaxSizeMb = 500,
+                DeadLetterPath = deadLetterPath
             }
         };
     }
@@ -50,5 +52,23 @@ public sealed class BridgeConfig
         public bool Enabled { get; init; } = true;
         public string Path { get; init; } = "./buffer";
         public int MaxSizeMb { get; init; } = 500;
+
+        /// <summary>Items older than this are dead-lettered instead of retried.</summary>
+        public int MaxEventAgeHours { get; init; } = 72;
+
+        /// <summary>How often the retry worker drains the buffer.</summary>
+        public int FlushIntervalSeconds { get; init; } = 30;
+
+        /// <summary>Maximum number of items processed per drain pass.</summary>
+        public int BatchSize { get; init; } = 50;
+
+        /// <summary>Maximum delivery attempts before an item is dead-lettered.</summary>
+        public int MaxAttempts { get; init; } = 10;
+
+        /// <summary>When false, exhausted items are simply dropped rather than parked.</summary>
+        public bool DeadLetterEnabled { get; init; } = true;
+
+        /// <summary>Folder that holds items that exhausted their retry budget.</summary>
+        public string DeadLetterPath { get; init; } = "./buffer/dead-letter";
     }
 }

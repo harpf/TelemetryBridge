@@ -93,6 +93,78 @@ public sealed class ConfigServiceTests : IDisposable
         Assert.Empty(errors);
     }
 
+    [Fact]
+    public void DefaultConfig_PopulatesBufferRetryFields()
+    {
+        var config = BridgeConfig.Default(_dir);
+
+        Assert.True(config.Buffer.BatchSize > 0);
+        Assert.True(config.Buffer.FlushIntervalSeconds > 0);
+        Assert.True(config.Buffer.MaxEventAgeHours > 0);
+        Assert.True(config.Buffer.MaxAttempts > 0);
+        Assert.True(config.Buffer.DeadLetterEnabled);
+        Assert.False(string.IsNullOrWhiteSpace(config.Buffer.DeadLetterPath));
+    }
+
+    [Fact]
+    public void Validate_ReturnsErrorsForInvalidBufferRetryFields()
+    {
+        var service = new ConfigService();
+        var config = new BridgeConfig
+        {
+            Buffer = new BridgeConfig.BufferOptions
+            {
+                Path = "C:\\data\\buffer",
+                MaxSizeMb = 100,
+                BatchSize = 0,
+                FlushIntervalSeconds = 0,
+                MaxEventAgeHours = 0,
+                MaxAttempts = 0,
+                DeadLetterEnabled = true,
+                DeadLetterPath = ""
+            }
+        };
+
+        var errors = service.Validate(config);
+
+        Assert.Contains(errors, e => e.Contains("buffer.batchSize"));
+        Assert.Contains(errors, e => e.Contains("buffer.flushIntervalSeconds"));
+        Assert.Contains(errors, e => e.Contains("buffer.maxEventAgeHours"));
+        Assert.Contains(errors, e => e.Contains("buffer.maxAttempts"));
+        Assert.Contains(errors, e => e.Contains("buffer.deadLetterPath"));
+    }
+
+    [Fact]
+    public void Load_BindsBufferRetryFields_FromCamelCaseSample()
+    {
+        const string json = """
+        {
+          "buffer": {
+            "enabled": true,
+            "path": "C:\\data\\buffer",
+            "maxSizeMb": 500,
+            "maxEventAgeHours": 48,
+            "flushIntervalSeconds": 15,
+            "batchSize": 25,
+            "maxAttempts": 7,
+            "deadLetterEnabled": true,
+            "deadLetterPath": "C:\\data\\dead-letter"
+          }
+        }
+        """;
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(ConfigPath, json);
+
+        var config = new ConfigService().Load(ConfigPath);
+
+        Assert.Equal(48, config.Buffer.MaxEventAgeHours);
+        Assert.Equal(15, config.Buffer.FlushIntervalSeconds);
+        Assert.Equal(25, config.Buffer.BatchSize);
+        Assert.Equal(7, config.Buffer.MaxAttempts);
+        Assert.True(config.Buffer.DeadLetterEnabled);
+        Assert.Equal("C:\\data\\dead-letter", config.Buffer.DeadLetterPath);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_dir))

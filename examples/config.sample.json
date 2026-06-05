@@ -19,6 +19,12 @@
   "buffer": {
     "enabled": true,
     "path": "C:\\ProgramData\\Levitec\\AutomationTelemetry\\buffer",
-    "maxSizeMb": 500
+    "maxSizeMb": 500,
+    "maxEventAgeHours": 72,
+    "flushIntervalSeconds": 30,
+    "batchSize": 50,
+    "maxAttempts": 10,
+    "deadLetterEnabled": true,
+    "deadLetterPath": "C:\\ProgramData\\Levitec\\AutomationTelemetry\\dead-letter"
   }
 }

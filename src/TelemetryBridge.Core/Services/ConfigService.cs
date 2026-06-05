@@ -38,6 +38,10 @@ public sealed class ConfigService
 
         Directory.CreateDirectory(workspaceRoot);
         Directory.CreateDirectory(config.Buffer.Path);
+        if (!string.IsNullOrWhiteSpace(config.Buffer.DeadLetterPath))
+        {
+            Directory.CreateDirectory(config.Buffer.DeadLetterPath);
+        }
 
         File.WriteAllText(configPath, JsonSerializer.Serialize(config, JsonOptions));
         return config;
@@ -63,6 +67,14 @@ public sealed class ConfigService
         if (config.Signoz.TimeoutSeconds <= 0) errors.Add("signoz.timeoutSeconds must be > 0");
         if (config.Buffer.MaxSizeMb <= 0) errors.Add("buffer.maxSizeMb must be > 0");
         if (string.IsNullOrWhiteSpace(config.Buffer.Path)) errors.Add("buffer.path is required");
+        if (config.Buffer.BatchSize <= 0) errors.Add("buffer.batchSize must be > 0");
+        if (config.Buffer.FlushIntervalSeconds <= 0) errors.Add("buffer.flushIntervalSeconds must be > 0");
+        if (config.Buffer.MaxEventAgeHours <= 0) errors.Add("buffer.maxEventAgeHours must be > 0");
+        if (config.Buffer.MaxAttempts <= 0) errors.Add("buffer.maxAttempts must be > 0");
+        if (config.Buffer.DeadLetterEnabled && string.IsNullOrWhiteSpace(config.Buffer.DeadLetterPath))
+        {
+            errors.Add("buffer.deadLetterPath is required when buffer.deadLetterEnabled is true");
+        }
         return errors;
     }
 }
