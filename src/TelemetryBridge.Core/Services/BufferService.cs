@@ -14,4 +14,14 @@ public sealed class BufferService
         File.WriteAllText(fullPath, payload);
         return fullPath;
     }
+
+    /// <summary>
+    /// Deletes a buffered event file after it has been confirmed delivered.
+    /// Safe to call when the file is already gone.
+    /// </summary>
+    public void Delete(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        if (File.Exists(path)) File.Delete(path);
+    }
 }
