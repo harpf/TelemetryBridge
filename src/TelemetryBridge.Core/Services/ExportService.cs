@@ -186,6 +186,9 @@ public sealed class ExportService
         SetString("job.script_path", telemetryEvent.ScriptPath);
         SetString("job.script_name", telemetryEvent.ScriptName);
         SetString("job.script_version", telemetryEvent.ScriptVersion);
+        SetString("runbook.name", telemetryEvent.RunbookName);
+        SetString("host.name", telemetryEvent.HostName);
+        SetString("environment.name", telemetryEvent.EnvironmentName);
 
         if (telemetryEvent.ExitCode.HasValue)
         {

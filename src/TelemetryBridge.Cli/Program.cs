@@ -8,6 +8,8 @@ var configService = new ConfigService();
 var bufferService = new BufferService();
 var exportService = new ExportService();
 var diagnosticsService = new DiagnosticsService(exportService);
+var reportService = new ReportService();
+var serviceProbeService = new ServiceProbeService();
 
 if (argsList.Length == 0 || argsList[0] is "-h" or "--help" or "help")
 {
@@ -30,6 +32,8 @@ return cmd switch
     "buffer" => await HandleBuffer(argsList.Skip(1).ToArray(), configService, bufferService, exportService, verbose),
     "diagnostics" or "diag" => await HandleDiagnostics(argsList.Skip(1).ToArray(), configService, diagnosticsService, verbose),
     "test" => await HandleTest(argsList.Skip(1).ToArray(), configService, diagnosticsService, verbose),
+    "report" => HandleReport(argsList.Skip(1).ToArray(), configService, reportService),
+    "service" => await HandleService(argsList.Skip(1).ToArray(), configService, serviceProbeService),
     _ => HandleUnknownCommand(cmd, configService)
 };
 
@@ -76,6 +80,44 @@ static int HandleConfig(string[] args, ConfigService configService)
             Console.Error.WriteLine($"Unknown config subcommand '{sub}'. Use: config init|show|validate");
             return 1;
     }
+}
+
+static int HandleReport(string[] args, ConfigService configService, ReportService reportService)
+{
+    var config = configService.LoadOrCreate();
+    DateTimeOffset? fromUtc = null;
+    DateTimeOffset? toUtc = null;
+
+    for (var i = 0; i < args.Length; i++)
+    {
+        switch (args[i])
+        {
+            case "--from":
+                if (i + 1 < args.Length && DateTimeOffset.TryParse(args[++i], out var fromParsed)) fromUtc = fromParsed.ToUniversalTime();
+                break;
+            case "--to":
+                if (i + 1 < args.Length && DateTimeOffset.TryParse(args[++i], out var toParsed)) toUtc = toParsed.ToUniversalTime();
+                break;
+        }
+    }
+
+    var report = reportService.CreateAdvancedReport(config.Buffer.Path, fromUtc, toUtc);
+    Console.WriteLine(JsonSerializer.Serialize(report, JsonFormatting.Options));
+    return 0;
+}
+
+static async Task<int> HandleService(string[] args, ConfigService configService, ServiceProbeService probeService)
+{
+    if (args.Length == 0 || !string.Equals(args[0], "check", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.Error.WriteLine("Only 'service check' is currently implemented.");
+        return 1;
+    }
+
+    var config = configService.LoadOrCreate();
+    var result = await probeService.ProbeAsync(config.Service);
+    Console.WriteLine(JsonSerializer.Serialize(result, JsonFormatting.Options));
+    return result.IsSuccess ? 0 : 2;
 }
 
 static async Task<int> HandleSend(string[] args, ConfigService configService, BufferService bufferService, ExportService exportService, bool verbose, bool strict)
@@ -701,6 +743,8 @@ static void PrintHelp(string workspaceRoot)
     Console.WriteLine("      --script-path <path>       Script path");
     Console.WriteLine("      --script-name <name>       Script name");
     Console.WriteLine("      --script-version <ver>     Script version");
+    Console.WriteLine("      --runbook <name>           Runbook name");
+    Console.WriteLine("      --environment <name>       Environment name");
     Console.WriteLine("      --error-message <text>     Structured error message");
     Console.WriteLine("      --error-type <type>        Structured error type");
     Console.WriteLine("      --error-code <code>        Structured error code");
@@ -734,6 +778,9 @@ static void PrintHelp(string workspaceRoot)
     Console.WriteLine("  diagnostics collect [--out <path>] [--zip]   Write a redacted support bundle");
     Console.WriteLine();
     Console.WriteLine("  test connection              OTLP probe + minimal trace export, pass/fail report");
+    Console.WriteLine();
+    Console.WriteLine("  report [--from <ISO-8601>] [--to <ISO-8601>]  Advanced reporting over buffered events");
+    Console.WriteLine("  service check                Probe local HTTP/TCP endpoints from config");
     Console.WriteLine();
     Console.WriteLine("Global options:");
     Console.WriteLine("  --verbose, -v                Verbose diagnostic output");

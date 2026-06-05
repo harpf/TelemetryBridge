@@ -36,6 +36,15 @@ public sealed record JobEvent
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ScriptVersion { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RunbookName { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? HostName { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? EnvironmentName { get; init; }
+
     public string Status { get; init; } = "succeeded";
 
     public DateTimeOffset StartedAt { get; init; } = DateTimeOffset.UtcNow;

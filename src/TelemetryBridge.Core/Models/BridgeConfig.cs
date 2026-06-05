@@ -32,10 +32,18 @@ public sealed class BridgeConfig
 
     public sealed class ServiceOptions
     {
+        // OTLP service identity.
         public string Name { get; init; } = "telemetrybridge";
         public string Namespace { get; init; } = "default";
         public string Version { get; init; } = "1.0.0";
         public string Environment { get; init; } = "production";
+
+        // Local health-probe targets used by the `service check` command.
+        public bool Enabled { get; init; } = true;
+        public string HttpEndpoint { get; init; } = "http://127.0.0.1:5067/health";
+        public string TcpHost { get; init; } = "127.0.0.1";
+        public int TcpPort { get; init; } = 4317;
+        public int TimeoutSeconds { get; init; } = 5;
     }
 
     public sealed class SignozOptions

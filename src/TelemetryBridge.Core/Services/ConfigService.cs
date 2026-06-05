@@ -75,6 +75,9 @@ public sealed class ConfigService
         {
             errors.Add("buffer.deadLetterPath is required when buffer.deadLetterEnabled is true");
         }
+        if (config.Service.TimeoutSeconds <= 0) errors.Add("service.timeoutSeconds must be > 0");
+        if (config.Service.TcpPort <= 0) errors.Add("service.tcpPort must be > 0");
+        if (string.IsNullOrWhiteSpace(config.Service.HttpEndpoint)) errors.Add("service.httpEndpoint is required");
         return errors;
     }
 }

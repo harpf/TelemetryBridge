@@ -17,6 +17,7 @@ public static class SendJobArgs
         string? jobName = null, status = null, system = null, eventType = null;
         string? correlationId = null, parentCorrelationId = null, instance = null;
         string? scriptPath = null, scriptName = null, scriptVersion = null;
+        string? runbookName = null, environmentName = null;
         string? errorMessage = null, errorType = null, errorCode = null;
         int? exitCode = null;
         double? durationMs = null;
@@ -39,6 +40,8 @@ public static class SendJobArgs
                 case "--script-path": scriptPath = Next(ref i); break;
                 case "--script-name": scriptName = Next(ref i); break;
                 case "--script-version": scriptVersion = Next(ref i); break;
+                case "--runbook": runbookName = Next(ref i); break;
+                case "--environment": environmentName = Next(ref i); break;
                 case "--error-message": errorMessage = Next(ref i); break;
                 case "--error-type": errorType = Next(ref i); break;
                 case "--error-code": errorCode = Next(ref i); break;
@@ -124,6 +127,9 @@ public static class SendJobArgs
             ScriptPath = scriptPath,
             ScriptName = scriptName,
             ScriptVersion = scriptVersion,
+            RunbookName = runbookName,
+            EnvironmentName = environmentName,
+            HostName = Environment.MachineName,
             DurationMs = durationMs,
             ExitCode = exitCode,
             Error = error,
