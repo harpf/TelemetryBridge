@@ -5,7 +5,17 @@ namespace TelemetryBridge.Core.Services;
 
 public sealed class ConfigService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    /// <summary>
+    /// Read/write options shared so the on-disk format is camelCase (matching
+    /// examples/config.sample.json) and loading is tolerant of casing.
+    /// </summary>
+    public static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
+
     private const string ConfigFileName = "telemetrybridge.config.json";
 
     public string GetWorkspaceRoot(string? overrideRoot = null)
@@ -43,7 +53,7 @@ public sealed class ConfigService
     {
         var configPath = GetConfigPath(path);
         var json = File.ReadAllText(configPath);
-        return JsonSerializer.Deserialize<BridgeConfig>(json) ?? new BridgeConfig();
+        return JsonSerializer.Deserialize<BridgeConfig>(json, JsonOptions) ?? new BridgeConfig();
     }
 
     public IReadOnlyList<string> Validate(BridgeConfig config)

@@ -17,12 +17,15 @@ if (argsList.Length == 0 || argsList[0] is "-h" or "--help" or "help")
 var verbose = argsList.Any(a => string.Equals(a, "--verbose", StringComparison.OrdinalIgnoreCase) || string.Equals(a, "-v", StringComparison.OrdinalIgnoreCase));
 argsList = argsList.Where(a => !string.Equals(a, "--verbose", StringComparison.OrdinalIgnoreCase) && !string.Equals(a, "-v", StringComparison.OrdinalIgnoreCase)).ToArray();
 
+var strict = argsList.Any(a => string.Equals(a, "--strict", StringComparison.OrdinalIgnoreCase));
+argsList = argsList.Where(a => !string.Equals(a, "--strict", StringComparison.OrdinalIgnoreCase)).ToArray();
+
 var cmd = argsList[0].ToLowerInvariant();
 
 return cmd switch
 {
     "config" => HandleConfig(argsList.Skip(1).ToArray(), configService),
-    "send" => await HandleSend(argsList.Skip(1).ToArray(), configService, bufferService, exportService, verbose),
+    "send" => await HandleSend(argsList.Skip(1).ToArray(), configService, bufferService, exportService, verbose, strict),
     _ => HandleUnknownCommand(cmd, configService)
 };
 
@@ -71,7 +74,7 @@ static int HandleConfig(string[] args, ConfigService configService)
     }
 }
 
-static async Task<int> HandleSend(string[] args, ConfigService configService, BufferService bufferService, ExportService exportService, bool verbose)
+static async Task<int> HandleSend(string[] args, ConfigService configService, BufferService bufferService, ExportService exportService, bool verbose, bool strict)
 {
     if (args.Length == 0 || !string.Equals(args[0], "job", StringComparison.OrdinalIgnoreCase))
     {
@@ -122,6 +125,8 @@ static async Task<int> HandleSend(string[] args, ConfigService configService, Bu
         FinishedAt = DateTimeOffset.UtcNow
     };
 
+    var strictMode = strict || config.Agent.StrictMode;
+
     var path = bufferService.Enqueue(evt, config.Buffer.Path);
     Console.WriteLine($"Buffered event: {path}");
 
@@ -130,6 +135,8 @@ static async Task<int> HandleSend(string[] args, ConfigService configService, Bu
         var sendResult = await exportService.TrySendAsync(evt, config, verbose);
         if (sendResult.IsSuccess)
         {
+            // Confirmed delivery: drop the durable copy so the buffer doesn't leak.
+            bufferService.Delete(path);
             Console.WriteLine($"Forwarded event: {sendResult.Message}");
         }
         else if (sendResult.IsSkipped)
@@ -139,12 +146,14 @@ static async Task<int> HandleSend(string[] args, ConfigService configService, Bu
         else
         {
             Console.Error.WriteLine($"Export failed (event remains buffered): {sendResult.Message}");
+            return strictMode ? 3 : 0;
         }
     }
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Export failed (event remains buffered): {ex.Message}");
         if (verbose) Console.Error.WriteLine($"[verbose] {ex}");
+        return strictMode ? 3 : 0;
     }
 
     return 0;
@@ -156,13 +165,17 @@ static void PrintHelp(string workspaceRoot)
     Console.WriteLine("===================");
     Console.WriteLine();
     Console.WriteLine("Usage:");
-    Console.WriteLine("  telemetrybridge [--verbose|-v] <command> [options]");
+    Console.WriteLine("  telemetrybridge [--verbose|-v] [--strict] <command> [options]");
     Console.WriteLine();
     Console.WriteLine("Commands:");
     Console.WriteLine("  config init                  Create default config + local data folders");
     Console.WriteLine("  config show                  Display current config (auto-creates if missing)");
     Console.WriteLine("  config validate              Validate current config");
     Console.WriteLine("  send job --job-name <name> [--status <status>] [--duration-ms <n>] [--system <name>]");
+    Console.WriteLine();
+    Console.WriteLine("Global options:");
+    Console.WriteLine("  --verbose, -v                Verbose diagnostic output");
+    Console.WriteLine("  --strict                     Exit non-zero when telemetry export fails");
     Console.WriteLine();
     Console.WriteLine("Local workspace:");
     Console.WriteLine($"  {workspaceRoot}");
@@ -173,5 +186,6 @@ static void PrintHelp(string workspaceRoot)
 
 static class JsonFormatting
 {
-    public static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+    // Mirror the on-disk camelCase format used by ConfigService.
+    public static readonly JsonSerializerOptions Options = ConfigService.JsonOptions;
 }

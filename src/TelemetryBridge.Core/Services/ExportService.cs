@@ -157,7 +157,7 @@ public sealed class ExportService
         }
     }
 
-    private static OtlpExportProtocol? ResolveProtocol(string? protocol)
+    internal static OtlpExportProtocol? ResolveProtocol(string? protocol)
     {
         if (string.Equals(protocol, "grpc", StringComparison.OrdinalIgnoreCase))
         {
@@ -173,7 +173,7 @@ public sealed class ExportService
         return null;
     }
 
-    private static Uri BuildEndpoint(string endpoint, OtlpExportProtocol protocol)
+    internal static Uri BuildEndpoint(string endpoint, OtlpExportProtocol protocol)
     {
         var uri = new Uri(endpoint);
 

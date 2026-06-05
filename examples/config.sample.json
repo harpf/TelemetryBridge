@@ -1,9 +1,6 @@
 {
   "agent": {
     "instanceId": "auto",
-    "listenUrl": "http://localhost:5050",
-    "enableHttpIngest": true,
-    "enableCliIngest": true,
     "strictMode": false
   },
   "service": {
@@ -16,33 +13,12 @@
     "endpoint": "http://signoz01.internal:4317",
     "protocol": "grpc",
     "timeoutSeconds": 10,
-    "useTls": false
+    "useTls": false,
+    "headers": null
   },
   "buffer": {
     "enabled": true,
     "path": "C:\\ProgramData\\Levitec\\AutomationTelemetry\\buffer",
-    "maxSizeMb": 500,
-    "maxEventAgeHours": 168,
-    "flushIntervalSeconds": 10,
-    "batchSize": 100,
-    "deadLetterEnabled": true,
-    "deadLetterPath": "C:\\ProgramData\\Levitec\\AutomationTelemetry\\deadletter"
-  },
-  "diagnostics": {
-    "enableNetworkTests": true,
-    "enableOtlpTestExport": true,
-    "collectLocalLogs": true
-  },
-  "logging": {
-    "path": "C:\\ProgramData\\Levitec\\AutomationTelemetry\\logs",
-    "level": "Information",
-    "retainDays": 14
-  },
-  "defaults": {
-    "system": "powershell",
-    "site": "onprem",
-    "attributes": {
-      "company": "levitec"
-    }
+    "maxSizeMb": 500
   }
 }
