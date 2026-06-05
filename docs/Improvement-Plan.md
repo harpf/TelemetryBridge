@@ -2,6 +2,23 @@
 
 _Assessment date: 2026-06-05. Reviewed commit: `19510c8`._
 
+> ## Status — all phases implemented (2026-06-06)
+> P0–P4 below were delivered across parallel branches and merged to `main`.
+> Full solution builds clean; **166 tests pass (140 Core + 26 Service), 0 failures.**
+>
+> | Phase | Delivered |
+> | --- | --- |
+> | **P0** | Correctness fixes (§3.1–3.6) + xUnit test project; CI workflow + `global.json` SDK pin |
+> | **P1** | Crash-safe durable buffer (temp+atomic rename), `RetryWorker` + backoff/jitter, dead-letter, `buffer status/inspect/flush/retry/purge` |
+> | **P2** | `JobEvent` aligned to `Event-Contract.json` (structured `error`, `attributes`, correlation/script fields, enums); span mapping; backward-compat load; new `send job` flags |
+> | **P3** | `DiagnosticsService` + `diagnostics doctor/network/dns/port/otlp/env/collect` + `test connection`; `LogEvent`/`MetricEvent` + `send log/metric/heartbeat` (best-effort OTLP) |
+> | **P4** | `TelemetryBridge.Service` Worker host (singleton exporter, interval drain, localhost HTTP ingest, `/health`, heartbeat); `TelemetryBridge.PowerShell` module (`Invoke-WithTelemetry` + Pester tests) |
+>
+> ### Known follow-ups surfaced during implementation
+> 1. **`test connection` can false-PASS against a down gRPC collector** — OTLP `ForceFlush` returns `true` asynchronously. The `doctor` TCP `port` probe reliably flags an unreachable collector; treat it as the source of truth. Consider an explicit ack/health check for `test connection`.
+> 2. **`agent.listenUrl` / `enableHttpIngest` / `heartbeatIntervalSeconds` are not yet on `BridgeConfig.AgentOptions`** — the Service reads them from the raw config JSON. Promote them to the typed model for consistency/validation.
+> 3. **Logs & metrics are best-effort (not buffered)** — `RetryWorker` only handles `JobEvent`. If durable logs/metrics are needed, generalize the buffer/worker over a base envelope.
+
 ## 1. Executive summary
 
 TelemetryBridge is at an early MVP stage. The scaffolding is clean and the
