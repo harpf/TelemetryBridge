@@ -24,10 +24,10 @@ public sealed class BufferService
     private const string TempExtension = ".tmp";
     private const string MetaSeparator = "__";
 
-    private static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        WriteIndented = true
-    };
+    // Persist with the same camelCase + case-insensitive options the rest of the
+    // app uses, so buffered files match the contract's camelCase and old
+    // (PascalCase, flat errorMessage) files still deserialize on read.
+    private static readonly JsonSerializerOptions SerializerOptions = ConfigService.JsonOptions;
 
     private readonly Func<DateTimeOffset> _clock;
 

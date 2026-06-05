@@ -1,5 +1,5 @@
-using System.Globalization;
 using System.Text.Json;
+using TelemetryBridge.Core.Cli;
 using TelemetryBridge.Core.Models;
 using TelemetryBridge.Core.Services;
 
@@ -83,50 +83,27 @@ static async Task<int> HandleSend(string[] args, ConfigService configService, Bu
         return 1;
     }
 
-    string? jobName = null;
-    var status = "succeeded";
-    double? durationMs = null;
-    var system = "powershell";
-
-    for (var i = 1; i < args.Length; i++)
+    var parsed = SendJobArgs.Parse(args.Skip(1).ToArray());
+    if (parsed.Event is null)
     {
-        switch (args[i])
-        {
-            case "--job-name":
-                if (i + 1 < args.Length) jobName = args[++i];
-                break;
-            case "--status":
-                if (i + 1 < args.Length) status = args[++i];
-                break;
-            case "--duration-ms":
-                if (i + 1 < args.Length && double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
-                {
-                    durationMs = parsed;
-                }
-                break;
-            case "--system":
-                if (i + 1 < args.Length) system = args[++i];
-                break;
-        }
-    }
-
-    if (string.IsNullOrWhiteSpace(jobName))
-    {
-        Console.Error.WriteLine("--job-name is required.");
+        foreach (var error in parsed.Errors) Console.Error.WriteLine(error);
         return 1;
     }
 
     var config = configService.LoadOrCreate();
-    var evt = new JobEvent
-    {
-        JobName = jobName,
-        Status = status,
-        DurationMs = durationMs,
-        System = system,
-        FinishedAt = DateTimeOffset.UtcNow
-    };
-
     var strictMode = strict || config.Agent.StrictMode;
+
+    // Validate the closed-enum fields against the contract: warn + normalize in
+    // non-strict mode, reject in strict mode.
+    var outcome = JobEventValidator.ValidateAndNormalize(parsed.Event, strictMode);
+    foreach (var warning in outcome.Warnings) Console.Error.WriteLine($"warning: {warning}");
+    if (outcome.HasErrors)
+    {
+        foreach (var error in outcome.Errors) Console.Error.WriteLine($"error: {error}");
+        return 1;
+    }
+
+    var evt = outcome.Event with { FinishedAt = DateTimeOffset.UtcNow };
 
     var path = bufferService.Enqueue(evt, config.Buffer.Path);
     Console.WriteLine($"Buffered event: {path}");
@@ -335,7 +312,23 @@ static void PrintHelp(string workspaceRoot)
     Console.WriteLine("  config init                  Create default config + local data folders");
     Console.WriteLine("  config show                  Display current config (auto-creates if missing)");
     Console.WriteLine("  config validate              Validate current config");
-    Console.WriteLine("  send job --job-name <name> [--status <status>] [--duration-ms <n>] [--system <name>]");
+    Console.WriteLine("  send job --job-name <name> [options]   Buffer + forward a job event");
+    Console.WriteLine("      --status <status>          started|succeeded|failed|warning|skipped|");
+    Console.WriteLine("                                 cancelled|timeout|interrupted|unknown (default: succeeded)");
+    Console.WriteLine("      --system <name>            powershell|scriptrunner|simego-dss|ouvvi|manual");
+    Console.WriteLine("      --event-type <type>        job|job-start|job-end (default: job)");
+    Console.WriteLine("      --duration-ms <n>          Run duration in milliseconds");
+    Console.WriteLine("      --exit-code <n>            Process exit code");
+    Console.WriteLine("      --correlation-id <id>      Correlation id");
+    Console.WriteLine("      --parent-correlation-id <id>  Parent correlation id");
+    Console.WriteLine("      --instance <name>          Originating instance/host");
+    Console.WriteLine("      --script-path <path>       Script path");
+    Console.WriteLine("      --script-name <name>       Script name");
+    Console.WriteLine("      --script-version <ver>     Script version");
+    Console.WriteLine("      --error-message <text>     Structured error message");
+    Console.WriteLine("      --error-type <type>        Structured error type");
+    Console.WriteLine("      --error-code <code>        Structured error code");
+    Console.WriteLine("      --attr <key=value>         Free-form attribute (repeatable)");
     Console.WriteLine();
     Console.WriteLine("  buffer status                Show pending / retrying / dead-letter counts + size");
     Console.WriteLine("  buffer inspect               List buffered items with key fields");
