@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: |
+          test_projects=$(grep -rl --include='*.csproj' 'Microsoft.NET.Test.Sdk' . || true)
+          if [ -z "$test_projects" ]; then
+            echo "No test projects found yet — skipping test execution (a sibling workspace is adding the test project)."
+          else
+            dotnet test --configuration Release --no-build
+          fi

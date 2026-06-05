@@ -1,5 +1,7 @@
 # TelemetryBridge
 
+[![CI](https://github.com/harpf/TelemetryBridge/actions/workflows/ci.yml/badge.svg)](https://github.com/harpf/TelemetryBridge/actions/workflows/ci.yml)
+
 TelemetryBridge is a **local-first automation telemetry bridge** for Windows automation servers. It is intended to be built with **.NET 10** and deployed side-by-side with PowerShell scripts, ScriptRunner actions, and Simego DSS/Ouvvi jobs.
 
 ## Problem it solves
